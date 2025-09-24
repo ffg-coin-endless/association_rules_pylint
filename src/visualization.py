@@ -66,7 +66,7 @@ def plot_grouped_rule_matrix(repo_name: str, in_dir=".", out_dir="."):
             if lift == 0:
                 continue
             size = size_map[(lhs, rhs)]
-            ax.scatter(j, i, s=size, c=[[lift]], cmap="viridis", edgecolors="k")
+            ax.scatter(j, i, s=size, c=[[lift]], cmap="viridis", edgecolors="k") # type: ignore
 
     ax.set_xticks(range(len(pivot.columns)))
     ax.set_yticks(range(len(pivot.index)))
@@ -76,17 +76,21 @@ def plot_grouped_rule_matrix(repo_name: str, in_dir=".", out_dir="."):
     ax.set_xlabel("RHS Error Code")
     ax.set_ylabel("LHS Group")
     sm = plt.cm.ScalarMappable(
-        cmap="viridis", norm=plt.Normalize(vmin=pivot.values.min(), vmax=pivot.values.max()))
+        cmap="viridis",
+        norm=plt.Normalize(  # type: ignore
+            vmin=pivot.values.min(),
+            vmax=pivot.values.max()
+        )
+    )
     plt.colorbar(sm, ax=ax, label="Lift")
     plt.tight_layout()
-    plt.savefig(f"grouped_rule_matrix_{repo_name.lower()}.pdf")
-    plt.close()
-    print(f"Saved grouped_rule_matrix_{repo_name.lower()}.pdf")
 
     out_file = os.path.join(out_dir, f"grouped_rule_matrix_{repo_name.lower()}.pdf")
     plt.savefig(out_file)
     plt.close()
+    print(f"Saved {out_file}")
     return out_file
+
 
 
 def plot_lift_vs_jaccard(repo_name, in_dir=".", out_dir="."):
@@ -153,16 +157,15 @@ def plot_lhs_rhs_severity(repo_name, in_dir=".", out_dir=".", top_n=20):
         code = code.lower()
         if "fatal" in code or code.startswith("f"):
             return "Fatal"
-        elif "error" in code or code.startswith("e"):
+        if "error" in code or code.startswith("e"):
             return "Error"
-        elif "warning" in code or code.startswith("w"):
+        if "warning" in code or code.startswith("w"):
             return "Warning"
-        elif "refactor" in code or code.startswith("r"):
+        if "refactor" in code or code.startswith("r"):
             return "Refactor"
-        elif "convention" in code or code.startswith("c"):
+        if "convention" in code or code.startswith("c"):
             return "Convention"
-        else:
-            return "Other"
+        return "Other"
 
     severity_rank = {
         "Fatal": 0,
@@ -400,7 +403,7 @@ def plot_lhs_rhs_severity_bubble(repo_name: str, in_dir=".", out_dir="."):
     for x_val in x_map.values():
         ax.axvline(x=x_val, color="gray", linestyle=":", linewidth=0.5, zorder=0)
 
-    norm = plt.Normalize(plot_df["max_lift"].min(), plot_df["max_lift"].max())
+    norm = plt.Normalize(plot_df["max_lift"].min(), plot_df["max_lift"].max()) # type: ignore
     sc = ax.scatter(
         plot_df["x"],
         plot_df["y"],
@@ -486,9 +489,9 @@ def plot_rule_network(repo_name, in_dir=".", out_dir="."):
         graph.add_edge(lhs, rhs, lift=row["lift"], confidence=row["confidence"])
 
     # Node colors by out-degree
-    out_degree_dict = dict(graph.out_degree())
+    out_degree_dict = dict(graph.out_degree()) # type: ignore
     node_colors = list(out_degree_dict.values())
-    norm = plt.Normalize(vmin=min(node_colors), vmax=max(node_colors))
+    norm = plt.Normalize(vmin=min(node_colors), vmax=max(node_colors)) # type: ignore
     cmap = matplotlib.colormaps['YlGnBu']
 
     fig, ax = plt.subplots(figsize=(7, 3.5))
@@ -500,7 +503,7 @@ def plot_rule_network(repo_name, in_dir=".", out_dir="."):
         graph,
         pos,
         node_size=80,
-        node_color=node_colors,
+        node_color=node_colors, # type: ignore
         cmap=cmap,
         edgecolors="black",
         linewidths=0.5,
@@ -620,7 +623,7 @@ def plot_asymmetry_matrix(repo_name, in_dir=".", out_dir="."):
     for i in range(heatmap_data.shape[0]):
         for j in range(heatmap_data.shape[1]):
             if i >= j:
-                ax.add_patch(plt.Rectangle(
+                ax.add_patch(plt.Rectangle( # type: ignore
                     (j, i), 1, 1,
                     fill=False,
                     edgecolor='lightgray',

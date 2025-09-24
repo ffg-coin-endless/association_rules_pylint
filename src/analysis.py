@@ -48,7 +48,7 @@ def analyze_pylint_report(csv_path: str, repo_name: str, out_dir: str = ".") -> 
     min_support = 3 / num_transactions
     print(f"Mining itemsets with min_support={min_support:.4f}")
     te = TransactionEncoder()
-    trans_df = pd.DataFrame(te.fit_transform(transactions), columns=te.columns_)
+    trans_df = pd.DataFrame(te.fit_transform(transactions), columns=te.columns_) # type: ignore
 
     frequent_itemsets = apriori(trans_df, min_support=min_support, use_colnames=True, max_len=3)
     if frequent_itemsets.empty:
@@ -82,8 +82,8 @@ def analyze_pylint_report(csv_path: str, repo_name: str, out_dir: str = ".") -> 
     if not top_rules.empty:
         graph = nx.DiGraph()
         for rule in top_rules.itertuples():
-            for a in rule.antecedents:
-                for c in rule.consequents:
+            for a in rule.antecedents: # type: ignore
+                for c in rule.consequents: # type: ignore
                     graph.add_edge(str(a), str(c), lift=rule.lift, confidence=rule.confidence)
 
         node_sizes = [max(error_counts.get(n, 1), 2) * 40 for n in graph.nodes]
@@ -100,7 +100,7 @@ def analyze_pylint_report(csv_path: str, repo_name: str, out_dir: str = ".") -> 
         plt.figure(figsize=(3.5, 3.5))
         nx.draw_networkx_nodes(graph, pos, node_size=node_sizes, node_color="#A1C9F4",
                                alpha=0.9, edgecolors="k")
-        nx.draw_networkx_edges(graph, pos, width=scaled_weights, edge_color="gray",
+        nx.draw_networkx_edges(graph, pos, width=scaled_weights, edge_color="gray", # type: ignore
                                alpha=0.5, arrows=True)
         nx.draw_networkx_labels(graph, pos, font_size=7)
         plt.title(f"Top 20 Rules: {repo_name}", fontsize=9)
@@ -215,7 +215,7 @@ def find_shared_one_to_one_rules_dynamic(
     pd.DataFrame
         DataFrame of shared rules with average confidence, lift, and support.
     """
-    in_dir = Path(in_dir)
+    in_dir = Path(in_dir) # type: ignore
 
     # Load dynamic min supports
     support_df = pd.read_csv(support_file)
@@ -225,7 +225,7 @@ def find_shared_one_to_one_rules_dynamic(
     sets = {}
 
     for name in repos:
-        csv_path = in_dir / f"rules_new_{name}.csv"
+        csv_path = in_dir / f"rules_new_{name}.csv" # type: ignore
         df = pd.read_csv(csv_path)
 
         # Restrict to 1→1 rules
@@ -356,11 +356,11 @@ def find_shared_error_rules_big3(repos, in_dir=".", max_antecedents=3, top_n=10)
                 supp = match["support"].values[0]
             else:
                 lift, supp = 0.0, 0.0
-            row[f"Lift_{repo}"] = lift
-            row[f"Supp_{repo}"] = supp
+            row[f"Lift_{repo}"] = lift # type: ignore
+            row[f"Supp_{repo}"] = supp # type: ignore
             max_lift = max(max_lift, lift)
 
-        row["MaxLift"] = max_lift
+        row["MaxLift"] = max_lift # type: ignore
         results.append(row)
 
     df_out = (

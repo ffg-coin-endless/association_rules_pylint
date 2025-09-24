@@ -26,7 +26,8 @@ def run_pylint_on_repo(repo_name: str, repo_path: str) -> str | None:
             ["pylint", "--output-format=json", "--exit-zero", *py_files],
             stdout=out_file,
             stderr=subprocess.PIPE,
-            text=True
+            text=True,
+            check=False  # explicitly allow non-zero exit codes
         )
 
     if result.stderr.strip():

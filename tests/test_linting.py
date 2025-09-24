@@ -1,14 +1,15 @@
 """
 Test the `run_pylint_on_repo` function from the `linting` module.
 """
-import pandas as pd
-from src import linting
+from types import SimpleNamespace  # standard library
+import pandas as pd  # third-party
+from src import linting  # type: ignore # local
+
 
 def test_run_pylint_on_repo(tmp_path, monkeypatch):
     """
-    Test the run_pylint_on_repo function by simulating a repository with a dummy 
-    Python file, mocking the list_py_files function to return the dummy file, 
-    and monkeypatching subprocess.
+    Test run_pylint_on_repo by simulating a repo with a dummy Python file,
+    mocking list_py_files to return it, and monkeypatching subprocess.
     """
     # Fake repo path with dummy .py file
     repo_path = tmp_path
@@ -19,15 +20,12 @@ def test_run_pylint_on_repo(tmp_path, monkeypatch):
     monkeypatch.setattr("src.linting.list_py_files", lambda _: [str(dummy_file)])
 
     # Monkeypatch subprocess to simulate pylint JSON output
-    def fake_run(cmd, stdout, stderr, text):
-        stdout.write('[{"path": "dummy.py", "message-id": "E0001", "symbol": "error"}]')
-        class Result:
-            """
-            A simple class representing the result of a process, with a 
-            placeholder for standard error output.
-            """
-            stderr = ""
-        return Result()
+    def fake_run(*_, **kwargs):
+        kwargs["stdout"].write(
+            '[{"path": "dummy.py", "message-id": "E0001", "symbol": "error"}]'
+        )
+        return SimpleNamespace(stderr="")
+
     monkeypatch.setattr("subprocess.run", fake_run)
 
     csv_path = linting.run_pylint_on_repo("DummyRepo", str(repo_path))

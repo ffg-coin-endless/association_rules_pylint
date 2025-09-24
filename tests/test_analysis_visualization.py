@@ -20,7 +20,7 @@ This test suite covers the following visualization functions:
 """
 
 import pandas as pd
-from src import visualization
+from src import visualization # type: ignore
 
 def make_dummy_rules_csv(path):
     """Helper to create a small dummy rules CSV with at least one shared error rule."""
