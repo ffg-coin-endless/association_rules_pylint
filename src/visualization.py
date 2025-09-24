@@ -1,15 +1,33 @@
+"""
+Visualization utilities for association rule mining results.
+This module provides a collection of functions to visualize association rules 
+mined from code repositories, including grouped rule matrices, scatter plots, 
+bubble charts, UpSet plots, network graphs, and asymmetry matrices.
+The visualizations are tailored for analyzing relationships between code 
+warning/error messages and their severities.
+"""
+
 import os
 import ast
+import re
+from pathlib import Path
+from collections import defaultdict
+
+import numpy as np
 import pandas as pd
 import matplotlib
-matplotlib.use("Agg")  
 import matplotlib.pyplot as plt
+import matplotlib.patheffects as pe
+from matplotlib.lines import Line2D
+
 import seaborn as sns
-from collections import defaultdict
+import networkx as nx
 from upsetplot import from_contents, plot as upset_plot
-import re
+
+matplotlib.use("Agg")
 
 def plot_grouped_rule_matrix(repo_name: str, in_dir=".", out_dir="."):
+    """Generates and saves a grouped association rule matrix plot for a given repository."""
     csv_file = os.path.join(in_dir, f"rules_{repo_name}.csv")
     if not os.path.exists(csv_file):
         print(f"Missing rules file: {csv_file}")
@@ -20,7 +38,7 @@ def plot_grouped_rule_matrix(repo_name: str, in_dir=".", out_dir="."):
     def safe_frozenset_parse(x):
         try:
             return frozenset(ast.literal_eval(x))
-        except Exception:
+        except (ValueError, SyntaxError):
             return frozenset()
 
     df["antecedents"] = df["antecedents"].apply(safe_frozenset_parse)
@@ -41,7 +59,7 @@ def plot_grouped_rule_matrix(repo_name: str, in_dir=".", out_dir="."):
         key = (row["lhs_label"], row["rhs_label"])
         size_map[key] += row["support"] * 20
 
-    fig, ax = plt.subplots(figsize=(7, 5))
+    _, ax = plt.subplots(figsize=(7, 5))
     for (i, lhs) in enumerate(pivot.index):
         for (j, rhs) in enumerate(pivot.columns):
             lift = pivot.loc[lhs, rhs]
@@ -57,7 +75,8 @@ def plot_grouped_rule_matrix(repo_name: str, in_dir=".", out_dir="."):
     ax.set_title(f"Grouped Association Rules: {repo_name}")
     ax.set_xlabel("RHS Error Code")
     ax.set_ylabel("LHS Group")
-    sm = plt.cm.ScalarMappable(cmap="viridis", norm=plt.Normalize(vmin=pivot.values.min(), vmax=pivot.values.max()))
+    sm = plt.cm.ScalarMappable(
+        cmap="viridis", norm=plt.Normalize(vmin=pivot.values.min(), vmax=pivot.values.max()))
     plt.colorbar(sm, ax=ax, label="Lift")
     plt.tight_layout()
     plt.savefig(f"grouped_rule_matrix_{repo_name.lower()}.pdf")
@@ -145,7 +164,14 @@ def plot_lhs_rhs_severity(repo_name, in_dir=".", out_dir=".", top_n=20):
         else:
             return "Other"
 
-    severity_rank = {"Fatal": 0, "Error": 1, "Warning": 2, "Refactor": 3, "Convention": 4, "Other": 5}
+    severity_rank = {
+        "Fatal": 0,
+        "Error": 1,
+        "Warning": 2,
+        "Refactor": 3,
+        "Convention": 4,
+        "Other": 5,
+    }
 
     def classify_group(lhs_string):
         codes = [c.strip() for c in lhs_string.split(",")]
@@ -170,13 +196,13 @@ def plot_lhs_rhs_severity(repo_name, in_dir=".", out_dir=".", top_n=20):
     agg["LHS"] = pd.Categorical(agg["LHS"], categories=lhs_order, ordered=True)
     agg["RHS_Severity"] = pd.Categorical(agg["RHS_Severity"], categories=rhs_order, ordered=True)
 
-    fig, ax = plt.subplots(figsize=(7.5, 4.0))
-    scatter = ax.scatter(
-        x=agg["LHS"], y=agg["RHS_Severity"],
-        s=agg["size"],
-        c=agg["RHS_Severity"].cat.codes,
-        cmap="Reds", alpha=0.8, edgecolors="k", linewidths=0.3
-    )
+    _, ax = plt.subplots(figsize=(7.5, 4.0))
+    # scatter = ax.scatter(
+    #     x=agg["LHS"], y=agg["RHS_Severity"],
+    #     s=agg["size"],
+    #     c=agg["RHS_Severity"].cat.codes,
+    #     cmap="Reds", alpha=0.8, edgecolors="k", linewidths=0.3
+    # )
 
     ax.set_xlabel("LHS Rule Group")
     ax.set_ylabel("RHS Severity")
@@ -220,7 +246,7 @@ def plot_shared_rules_upset(repo_names, in_dir=".", out_dir="."):
         def safe_frozenset_parse(x):
             try:
                 return frozenset(ast.literal_eval(x))
-            except Exception:
+            except (ValueError, SyntaxError):
                 return frozenset()
 
         df["antecedents"] = df["antecedents"].apply(safe_frozenset_parse)
@@ -270,9 +296,6 @@ def plot_shared_rules_upset(repo_names, in_dir=".", out_dir="."):
     return out_file
 
 
-import matplotlib.pyplot as plt
-from upsetplot import from_contents, plot
-
 def plot_shared_rules_upset_dynamic(sets, out_file):
     """
     Plot an upset plot of shared 1→1 rules across repos.
@@ -286,21 +309,12 @@ def plot_shared_rules_upset_dynamic(sets, out_file):
     """
     upset_data = from_contents(sets)
     plt.figure(figsize=(7, 3.5))
-    plot(upset_data, orientation='horizontal', sort_by='cardinality')
+    upset_plot(upset_data, orientation='horizontal', sort_by='cardinality')
     plt.title("Shared Association Rules (1→1 Match with Dynamic Threshold)")
     plt.tight_layout()
     plt.savefig(out_file, format='pdf', bbox_inches='tight')
     plt.close()
     return out_file
-
-
-# in src/visualization.py
-
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
-import pandas as pd
-from pathlib import Path
 
 
 def extract_severity(code: str) -> str:
@@ -447,17 +461,6 @@ def plot_lhs_rhs_severity_bubble(repo_name: str, in_dir=".", out_dir="."):
     return out_file
 
 
-
-
-import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-import matplotlib as mpl
-import matplotlib.patheffects as pe
-import networkx as nx
-from pathlib import Path
-
-
 def plot_rule_network(repo_name, in_dir=".", out_dir="."):
     """
     Plot an association rule network graph for a given repository.
@@ -474,27 +477,27 @@ def plot_rule_network(repo_name, in_dir=".", out_dir="."):
     rules = pd.read_csv(in_dir / f"rules_new_{repo_name}.csv")
 
     # Build directed graph
-    G = nx.DiGraph()
+    graph = nx.DiGraph()
     for _, row in rules.iterrows():
         lhs = row["Left_Hand_Side"]
         rhs = row["Right_Hand_Side"]
-        G.add_node(lhs)
-        G.add_node(rhs)
-        G.add_edge(lhs, rhs, lift=row["lift"], confidence=row["confidence"])
+        graph.add_node(lhs)
+        graph.add_node(rhs)
+        graph.add_edge(lhs, rhs, lift=row["lift"], confidence=row["confidence"])
 
     # Node colors by out-degree
-    out_degree_dict = dict(G.out_degree())
+    out_degree_dict = dict(graph.out_degree())
     node_colors = list(out_degree_dict.values())
     norm = plt.Normalize(vmin=min(node_colors), vmax=max(node_colors))
-    cmap = cm.YlGnBu
+    cmap = matplotlib.colormaps['YlGnBu']
 
     fig, ax = plt.subplots(figsize=(7, 3.5))
-    pos = nx.spring_layout(G, k=0.4, seed=42)
+    pos = nx.spring_layout(graph, k=0.4, seed=42)
 
-    nx.draw_networkx_edges(G, pos, alpha=0.3, arrows=True, arrowstyle="-|>", ax=ax)
+    nx.draw_networkx_edges(graph, pos, alpha=0.3, arrows=True, arrowstyle="-|>", ax=ax)
 
     nx.draw_networkx_nodes(
-        G,
+        graph,
         pos,
         node_size=80,
         node_color=node_colors,
@@ -533,13 +536,6 @@ def plot_rule_network(repo_name, in_dir=".", out_dir="."):
 
     return str(out_file)
 
-
-import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
-import numpy as np
-import matplotlib as mpl
-from pathlib import Path
 
 def plot_asymmetry_matrix(repo_name, in_dir=".", out_dir="."):
     """
@@ -591,7 +587,7 @@ def plot_asymmetry_matrix(repo_name, in_dir=".", out_dir="."):
     mask = np.triu(np.ones_like(heatmap_data, dtype=bool))
 
     # Style
-    mpl.rcParams.update({
+    matplotlib.rcParams.update({
         'font.size': 6,
         'axes.labelsize': 6,
         'axes.titlesize': 7,
