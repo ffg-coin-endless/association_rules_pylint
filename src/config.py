@@ -1,3 +1,17 @@
+"""
+Configuration module for repository analysis and plotting.
+This module defines:
+- A dictionary of exemplar repositories (`REPOS`) to be analyzed, mapping 
+    repository names to their GitHub URLs.
+- The local base directory (`BASE_DIR`) where repositories will be cloned 
+    or stored.
+- Ensures the base directory exists.
+- Sets global plotting styles for matplotlib visualizations, including 
+    font sizes, figure size, and font families.
+    Intended for use in scripts and notebooks that analyze Python 
+    repositories and generate publication-quality plots.
+"""
+
 import os
 import matplotlib as mpl
 

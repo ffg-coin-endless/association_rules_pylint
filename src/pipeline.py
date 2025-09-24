@@ -1,3 +1,7 @@
+"""
+This module defines a pipeline for analyzing Python repositories using pylint.
+"""
+
 import multiprocessing
 import concurrent.futures
 from .config import REPOS
@@ -24,8 +28,17 @@ def main() -> None:
         for future in concurrent.futures.as_completed(futures):
             try:
                 future.result()
-            except Exception as e:
-                print(f"Exception during analysis: {e}")
+            except (
+                concurrent.futures.process.BrokenProcessPool,
+                concurrent.futures.TimeoutError
+            ) as e:
+                print(f"Process pool or timeout error during analysis: {e}")
+            except OSError as e:
+                # Handle OS-related errors (e.g., file not found, permission denied)
+                print(f"OS error during analysis: {e}")
+            except ValueError as e:
+                # Handle value errors (e.g., bad input data)
+                print(f"Value error during analysis: {e}")
 
 
 if __name__ == "__main__":

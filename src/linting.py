@@ -1,3 +1,8 @@
+"""
+Runs pylint on all Python files in a specified repository and saves the report 
+as both JSON and CSV files.
+"""
+
 import os
 import subprocess
 import json
@@ -16,12 +21,12 @@ def run_pylint_on_repo(repo_name: str, repo_path: str) -> str | None:
         return None
 
     print(f"Running pylint on {repo_name} ({len(py_files)} files)...")
-    with open(json_path, "w") as out_file:
+    with open(json_path, "w", encoding="utf-8") as out_file:
         result = subprocess.run(
             ["pylint", "--output-format=json", "--exit-zero", *py_files],
             stdout=out_file,
             stderr=subprocess.PIPE,
-            text=True,
+            text=True
         )
 
     if result.stderr.strip():
@@ -32,11 +37,11 @@ def run_pylint_on_repo(repo_name: str, repo_path: str) -> str | None:
         return None
 
     try:
-        with open(json_path, "r") as f:
+        with open(json_path, "r", encoding="utf-8") as f:
             data = json.load(f)
         if not isinstance(data, list) or not data:
             raise ValueError("Empty or invalid JSON data.")
-    except Exception as e:
+    except (json.JSONDecodeError, ValueError, OSError) as e:
         print(f"Failed to parse JSON for {repo_name}: {e}")
         return None
 

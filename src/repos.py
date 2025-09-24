@@ -1,3 +1,8 @@
+"""
+This module provides utilities for managing Git repositories and listing Python files within them.
+Functions:
+"""
+
 import os
 import git
 from .config import BASE_DIR
