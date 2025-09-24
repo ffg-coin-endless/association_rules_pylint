@@ -1,3 +1,24 @@
+""" 
+Unit tests for the visualization module in the association_rules_pylint package.
+This test suite covers the following visualization functions:
+- plot_grouped_rule_matrix: Tests grouped rule matrix plotting from a dummy 
+    rules CSV.
+- plot_lift_vs_jaccard: Tests plotting of lift vs. Jaccard index from a dummy 
+    rules CSV.
+- plot_lhs_rhs_severity: Tests plotting of LHS vs. RHS severity from a dummy 
+    rules CSV.
+- plot_shared_rules_upset: Tests upset plot generation for shared rules across 
+    multiple repositories.
+- plot_shared_rules_upset_dynamic: Tests dynamic upset plot generation from 
+    sets of rules.
+- plot_lhs_rhs_severity_bubble: Tests bubble plot visualization for LHS/RHS 
+    severity from a dummy rules CSV.
+- plot_rule_network: Tests association rule network plotting from a dummy 
+    rules CSV.
+- plot_asymmetry_matrix: Tests asymmetry matrix plotting for 1→1 rules with 
+    reverse pairs.
+"""
+
 import pandas as pd
 from src import visualization
 
@@ -42,6 +63,10 @@ def make_dummy_rules_csv(path):
 
 
 def test_plot_grouped_rule_matrix(tmp_path):
+    """
+    Test the plot_grouped_rule_matrix function to ensure it generates a grouped 
+    rule matrix PDF file.
+    """
     repo_name = "DummyRepo"
     csv_file = tmp_path / f"rules_{repo_name}.csv"
     make_dummy_rules_csv(csv_file)
@@ -52,6 +77,11 @@ def test_plot_grouped_rule_matrix(tmp_path):
 
 
 def test_plot_lift_vs_jaccard(tmp_path):
+    """
+    Test the plot_lift_vs_jaccard function to ensure it generates a lift vs. 
+    Jaccard plot PDF file from a dummy rules CSV file for a given repository.
+    """
+
     repo_name = "DummyRepo"
     csv_file = tmp_path / f"rules_{repo_name}.csv"
     make_dummy_rules_csv(csv_file)
@@ -62,16 +92,26 @@ def test_plot_lift_vs_jaccard(tmp_path):
 
 
 def test_plot_lhs_rhs_severity(tmp_path):
+    """
+    Test the plot_lhs_rhs_severity function to ensure it generates a PDF plot file
+    from a dummy rules CSV. 
+    """
     repo_name = "DummyRepo"
     csv_file = tmp_path / f"rules_{repo_name}.csv"
     make_dummy_rules_csv(csv_file)
 
-    out_file = visualization.plot_lhs_rhs_severity(repo_name, in_dir=tmp_path, out_dir=tmp_path, top_n=5)
+    out_file = visualization.plot_lhs_rhs_severity(
+        repo_name, in_dir=tmp_path, out_dir=tmp_path, top_n=5
+    )
     assert out_file is not None
     assert (tmp_path / f"lhs_rhs_severity_{repo_name}.pdf").exists()
 
 
 def test_plot_shared_rules_upset(tmp_path):
+    """
+    Test the plot_shared_rules_upset function to ensure it generates an upset plot PDF
+    for shared association rules across multiple repositories.
+    """
     repos = ["Matplotlib", "Sklearn", "Numpy"]
     for repo in repos:
         csv_file = tmp_path / f"rules_{repo}.csv"
@@ -83,6 +123,10 @@ def test_plot_shared_rules_upset(tmp_path):
 
 
 def test_plot_shared_rules_upset_dynamic(tmp_path):
+    """
+    Test the `plot_shared_rules_upset_dynamic` function from the `visualization` module.
+    """
+
     # Fake sets of rules for 3 repos
     sets = {
         "RepoA": {"E0001 → E0002", "E0003 → E0004"},
@@ -100,6 +144,12 @@ def test_plot_shared_rules_upset_dynamic(tmp_path):
 
 
 def test_plot_lhs_rhs_severity_bubble(tmp_path):
+    """ 
+    Test the plot_lhs_rhs_severity_bubble function to ensure it generates a PDF 
+    bubble plot visualizing the relationship between left-hand side (LHS) and 
+    right-hand side (RHS) severities from association rules. 
+    """
+
     repo_name = "DummyRepo"
     csv_file = tmp_path / f"rules_new_{repo_name}.csv"
 
@@ -146,9 +196,9 @@ def test_plot_lhs_rhs_severity_bubble(tmp_path):
     assert "lhs_rhs_severity_bubble" in out_file.name
 
 def test_plot_rule_network(tmp_path):
-    import pandas as pd
-    from src import visualization
-
+    """
+    Test the `plot_rule_network` function from the `visualization` module.
+    """
     # Dummy repo
     repo_name = "DummyRepo"
     csv_file = tmp_path / f"rules_new_{repo_name}.csv"
@@ -180,9 +230,10 @@ def test_plot_rule_network(tmp_path):
     assert out_file.endswith(".pdf")
 
 def test_plot_asymmetry_matrix(tmp_path):
-    import pandas as pd
-    from src import visualization
-
+    """
+    Test the plot_asymmetry_matrix function to ensure it generates a PDF file
+    visualizing the asymmetry matrix from a CSV file containing association rules.
+    """
     repo_name = "DummyRepo"
     csv_file = tmp_path / f"rules_{repo_name}.csv"
 

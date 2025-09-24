@@ -1,9 +1,32 @@
+"""
+Test suite for the `analysis` module in the `src` package.
+This module contains unit tests for various functions that analyze pylint report 
+data and association rules.
+Tested Functions:
+- analyze_pylint_report: Tests that the analysis function creates the expected 
+    rules file from a minimal dataset.
+- find_shared_one_to_one_rules: Tests detection of shared one-to-one association 
+    rules across multiple repositories.
+- find_shared_one_to_one_rules_dynamic: Tests detection of shared one-to-one 
+    rules using dynamic support thresholds.
+- find_shared_error_rules_big3: Tests identification of shared error rules among 
+    three major repositories.
+- find_strong_asymmetries: Tests detection of strong asymmetries in association 
+    rules.
+Each test uses temporary directories and files to ensure isolation and 
+reproducibility.
+"""
+
 import pandas as pd
 import pytest
 from src import analysis
 
 
 def test_analyze_pylint_report(tmp_path):
+    """
+    Test the analyze_pylint_report function by creating a minimal CSV report,
+    running the analysis, and verifying that the expected output file is generated.
+    """
     # Minimal dataset (3 transactions, overlapping error codes)
     data = [
         {"message-id": "E0001", "path": "file1.py", "symbol": "err"},
@@ -22,6 +45,11 @@ def test_analyze_pylint_report(tmp_path):
 
 
 def test_find_shared_one_to_one_rules(tmp_path):
+    """
+    Test the `find_shared_one_to_one_rules` function to ensure it correctly 
+    identifies and aggregates shared one-to-one association rules across 
+    multiple repositories.
+    """
     repos = ["RepoA", "RepoB", "RepoC"]
 
     def make_csv(path, lhs, rhs, support, confidence, lift):
@@ -55,6 +83,11 @@ def test_find_shared_one_to_one_rules(tmp_path):
 
 
 def test_find_shared_one_to_one_rules_dynamic(tmp_path):
+    """
+    Test the `find_shared_one_to_one_rules_dynamic` function to ensure it 
+    correctly identifies shared one-to-one association rules across multiple 
+    repositories using dynamically provided minimum support thresholds.
+    """
     repos = ["RepoA", "RepoB"]
     support_file = tmp_path / "supports.csv"
 
@@ -85,9 +118,11 @@ def test_find_shared_one_to_one_rules_dynamic(tmp_path):
 
 
 def test_find_shared_error_rules_big3(tmp_path):
-    import pandas as pd
-    from src import analysis
-
+    """
+    Test the `find_shared_error_rules_big3` function to ensure it correctly 
+    identifies and returns shared error rules across three repositories 
+    (Matplotlib, Sklearn, Numpy) using dummy CSV files. 
+    """
     # Dummy repo files
     repos = {
         "Matplotlib": "rules_new_Matplotlib.csv",
@@ -110,8 +145,8 @@ def test_find_shared_error_rules_big3(tmp_path):
         }])
         df.to_csv(path, index=False)
 
-    for repo in repos:
-        make_csv(tmp_path / repos[repo], "A0001", "E0002", lift=2.5, supp=0.3)
+    for filename in repos.values():
+        make_csv(tmp_path / filename, "A0001", "E0002", lift=2.5, supp=0.3)
 
     df_shared = analysis.find_shared_error_rules_big3(repos, in_dir=tmp_path, top_n=5)
 
@@ -122,9 +157,10 @@ def test_find_shared_error_rules_big3(tmp_path):
 
 
 def test_find_strong_asymmetries(tmp_path):
-    import pandas as pd
-    from src import analysis
-
+    """
+    Test the `find_strong_asymmetries` function to ensure it correctly 
+    identifies strong asymmetric association rules.
+    """
     csv_file = tmp_path / "rules.csv"
 
     # make dummy 1→1 rules
