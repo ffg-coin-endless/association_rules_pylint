@@ -1,10 +1,23 @@
+"""
+analysis.py
+This module provides functions for mining frequent itemsets and association 
+rules from pylint CSV reports, sorting and filtering rules by various metrics, 
+and identifying shared or asymmetric rules across multiple repositories.
+Functions
+"""
+
 import os
+import ast
+import pathlib
+from pathlib import Path
+import re
+import numpy as np
 import pandas as pd
 import networkx as nx
 import matplotlib.pyplot as plt
 from mlxtend.frequent_patterns import apriori, association_rules
 from mlxtend.preprocessing import TransactionEncoder
-from pathlib import Path
+
 
 def analyze_pylint_report(csv_path: str, repo_name: str, out_dir: str = ".") -> None:
     """Mine frequent itemsets and association rules from a pylint CSV report."""
@@ -48,8 +61,11 @@ def analyze_pylint_report(csv_path: str, repo_name: str, out_dir: str = ".") -> 
     )
 
     rules = association_rules(frequent_itemsets, metric="confidence", min_threshold=0.1)
-    rules["Left_Hand_Side"] = rules["antecedents"].apply(lambda x: ", ".join(sorted(str(i) for i in x)))
-    rules["Right_Hand_Side"] = rules["consequents"].apply(lambda x: ", ".join(sorted(str(i) for i in x)))
+    rules["Left_Hand_Side"] = rules["antecedents"].apply(
+        lambda x: ", ".join(sorted(str(i) for i in x))
+    )
+    rules["Right_Hand_Side"] = rules["consequents"].apply(
+        lambda x: ", ".join(sorted(str(i) for i in x)))
     rules["Jaccard"] = rules.apply(
         lambda row: row["support"] / (
             row["antecedent support"] + row["consequent support"] - row["support"]
@@ -64,14 +80,14 @@ def analyze_pylint_report(csv_path: str, repo_name: str, out_dir: str = ".") -> 
     # Save top rules graph
     top_rules = rules.sort_values(by="lift", ascending=False).head(20)
     if not top_rules.empty:
-        G = nx.DiGraph()
+        graph = nx.DiGraph()
         for rule in top_rules.itertuples():
             for a in rule.antecedents:
                 for c in rule.consequents:
-                    G.add_edge(str(a), str(c), lift=rule.lift, confidence=rule.confidence)
+                    graph.add_edge(str(a), str(c), lift=rule.lift, confidence=rule.confidence)
 
-        node_sizes = [max(error_counts.get(n, 1), 2) * 40 for n in G.nodes]
-        edge_weights = [G[u][v]["lift"] for u, v in G.edges]
+        node_sizes = [max(error_counts.get(n, 1), 2) * 40 for n in graph.nodes]
+        edge_weights = [graph[u][v]["lift"] for u, v in graph.edges]
         if edge_weights:
             scaled_weights = [
                 2 + 1.5 * (w - min(edge_weights)) / (max(edge_weights) - min(edge_weights) + 1e-5)
@@ -80,18 +96,18 @@ def analyze_pylint_report(csv_path: str, repo_name: str, out_dir: str = ".") -> 
         else:
             scaled_weights = []
 
-        pos = nx.shell_layout(G)
+        pos = nx.shell_layout(graph)
         plt.figure(figsize=(3.5, 3.5))
-        nx.draw_networkx_nodes(G, pos, node_size=node_sizes, node_color="#A1C9F4", alpha=0.9, edgecolors="k")
-        nx.draw_networkx_edges(G, pos, width=scaled_weights, edge_color="gray", alpha=0.5, arrows=True)
-        nx.draw_networkx_labels(G, pos, font_size=7)
+        nx.draw_networkx_nodes(graph, pos, node_size=node_sizes, node_color="#A1C9F4",
+                               alpha=0.9, edgecolors="k")
+        nx.draw_networkx_edges(graph, pos, width=scaled_weights, edge_color="gray",
+                               alpha=0.5, arrows=True)
+        nx.draw_networkx_labels(graph, pos, font_size=7)
         plt.title(f"Top 20 Rules: {repo_name}", fontsize=9)
         plt.axis("off")
         plt.tight_layout()
         plt.savefig(os.path.join(out_dir, f"assoc_network_{repo_name}.pdf"))
         plt.close()
-
-
 
 
 def sort_rules_by_jaccard(repo_name: str, in_dir: Path, out_dir: Path) -> Path:
@@ -102,7 +118,10 @@ def sort_rules_by_jaccard(repo_name: str, in_dir: Path, out_dir: Path) -> Path:
     df = pd.read_csv(in_file)
 
     # Add Jaccard if missing
-    if "Jaccard" not in df.columns and {"support", "antecedent support", "consequent support"} <= set(df.columns):
+    if (
+        "Jaccard" not in df.columns
+        and {"support", "antecedent support", "consequent support"} <= set(df.columns)
+    ):
         df["Jaccard"] = df["support"] / (
             df["antecedent support"] + df["consequent support"] - df["support"]
         )
@@ -112,11 +131,6 @@ def sort_rules_by_jaccard(repo_name: str, in_dir: Path, out_dir: Path) -> Path:
 
     print(f"Saved sorted rules to {out_file}")
     return out_file
-
-
-import pandas as pd
-from pathlib import Path
-
 
 
 def find_shared_one_to_one_rules(
@@ -186,11 +200,13 @@ def find_shared_one_to_one_rules(
     return pd.DataFrame(rows)
 
 
-
-from pathlib import Path
-import pandas as pd
-
-def find_shared_one_to_one_rules_dynamic(repos, support_file, in_dir=".", min_conf=0.5, min_lift=2.0):
+def find_shared_one_to_one_rules_dynamic(
+    repos: list[str],
+    support_file: str,
+    in_dir: str = ".",
+    min_conf: float = 0.5,
+    min_lift: float = 2.0
+) -> pd.DataFrame:
     """
     Find shared 1→1 rules across repositories using dynamic min_support thresholds.
 
@@ -235,22 +251,27 @@ def find_shared_one_to_one_rules_dynamic(repos, support_file, in_dir=".", min_co
     shared_rules = set.intersection(*sets.values())
 
     results = []
+
+    def safe_get(rule, metric):
+        values = []
+        for repo in repos:
+            if rule in filtered[repo].index:
+                val = filtered[repo].loc[rule, metric]
+                if isinstance(val, pd.Series):
+                    values.append(val.iloc[0])
+                else:
+                    values.append(val)
+        return values
+
     for rule in shared_rules:
         lhs, rhs = rule.split(' → ')
 
-        def safe_get(metric):
-            values = []
-            for repo in repos:
-                if rule in filtered[repo].index:
-                    val = filtered[repo].loc[rule, metric]
-                    if isinstance(val, pd.Series):
-                        values.append(val.iloc[0])
-                    else:
-                        values.append(val)
-            return values
-
-        confs, lifts, supps = safe_get('confidence'), safe_get('lift'), safe_get('support')
-        avg_conf, avg_lift, avg_support = sum(confs)/len(confs), sum(lifts)/len(lifts), sum(supps)/len(supps)
+        confs = safe_get(rule, 'confidence')
+        lifts = safe_get(rule, 'lift')
+        supps = safe_get(rule, 'support')
+        avg_conf = sum(confs) / len(confs)
+        avg_lift = sum(lifts) / len(lifts)
+        avg_support = sum(supps) / len(supps)
 
         results.append({
             "lhs": lhs,
@@ -263,12 +284,7 @@ def find_shared_one_to_one_rules_dynamic(repos, support_file, in_dir=".", min_co
     return pd.DataFrame(results)
 
 
-
-import pandas as pd
-import ast
-import re
-
-def parse_frozenset_column(col):
+def parse_frozenset_column(col: pd.Series) -> pd.Series:
     """Robustly parse frozenset-like strings into Python frozensets."""
     def try_parse(x):
         if isinstance(x, frozenset):
@@ -281,21 +297,21 @@ def parse_frozenset_column(col):
             x = re.sub(r'^frozenset\((.*)\)$', r'\1', x)
         try:
             return frozenset(ast.literal_eval(x))
-        except Exception:
+        except (ValueError, SyntaxError):
             return frozenset()
     return col.apply(try_parse)
 
 
 def find_shared_error_rules_big3(repos, in_dir=".", max_antecedents=3, top_n=10):
     """
-    Find shared rules with error consequents across the three big repos (Matplotlib, Sklearn, Numpy).
+    Find shared rules with error consequents across the three big repos 
+    (Matplotlib, Sklearn, Numpy).
     
     Returns
     -------
     pd.DataFrame
         Top shared rules with lift and support per repo.
     """
-    import pathlib
     in_dir = pathlib.Path(in_dir)
 
     error_pattern = re.compile(r"^E\d{4}$")
@@ -312,7 +328,13 @@ def find_shared_error_rules_big3(repos, in_dir=".", max_antecedents=3, top_n=10)
             (df["consequents"].apply(lambda x: any(error_pattern.match(e) for e in x)))
         ].copy()
 
-        df["rule_key"] = df.apply(lambda row: (frozenset(row["antecedents"]), frozenset(row["consequents"])), axis=1)
+        df["rule_key"] = df.apply(
+            lambda row: (
+            frozenset(row["antecedents"]),
+            frozenset(row["consequents"])
+            ),
+            axis=1
+        )
         filtered[name] = df
         sets[name] = set(df["rule_key"])
 
@@ -341,7 +363,12 @@ def find_shared_error_rules_big3(repos, in_dir=".", max_antecedents=3, top_n=10)
         row["MaxLift"] = max_lift
         results.append(row)
 
-    df_out = pd.DataFrame(results).sort_values(by="MaxLift", ascending=False).head(top_n).reset_index(drop=True)
+    df_out = (
+        pd.DataFrame(results)
+        .sort_values(by="MaxLift", ascending=False)
+        .head(top_n)
+        .reset_index(drop=True)
+    )
     return df_out
 
 
